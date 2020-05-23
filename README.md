@@ -30,7 +30,7 @@ Configure the Extension Details and press Next button
 
 ### DoH Response
 
-![DoH Request](img/doh-response.png "DoH request with Burp DoH Decoder")
+![DoH Request](img/doh-response.png "DoH response with Burp DoH Decoder")
 
 ## Documentation
 
