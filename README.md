@@ -7,7 +7,7 @@ Decodes DNS messages from HTTP(S) requests and responses with the MIME type `app
 ### Install Burp DoH Decoder
 1. Go to the desired plugin installation directory and run the following commands. 
     ```sh
-    git clone git@github.com:DNS-Privacy-Security/burp-doh-decoder.git
+    git clone https://github.com/DNS-Privacy-Security/burp-doh-decoder.git
     pip install -r burp-doh-decoder/requirements.txt --target=Lib
     ```
 
