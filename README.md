@@ -31,3 +31,7 @@ Configure the Extension Details and press Next button
 ### DoH Response
 
 ![DoH Request](img/doh-response.png "DoH request with Burp DoH Decoder")
+
+## Documentation
+
+You can find the [Documentation](docs/DOCUMENTATION.md) in the "docs" folder.
