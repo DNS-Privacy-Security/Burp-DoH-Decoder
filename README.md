@@ -1,7 +1,7 @@
 # Burp DoH Decoder
 
-Burp DoH Decoder - Decodes DNS messages from HTTP(S) requests and responses with the MIME type `application/dns-message`
-<!-- GETTING STARTED -->
+Decodes DNS messages from HTTP(S) requests and responses with the MIME type `application/dns-message`
+
 ## Getting Started
 
 ### Install Burp DoH Decoder
