@@ -22,6 +22,10 @@ Configure the Extension Details and press Next button
 
 4. The Burp DoH Decoder is now installed and no errors should be visible on the Errors tab
 
+## Documentation
+
+You can find the [Documentation](docs/DOCUMENTATION.md) in the docs folder.
+
 ## Screenshots
 
 ### DoH Request
@@ -31,7 +35,3 @@ Configure the Extension Details and press Next button
 ### DoH Response
 
 ![DoH Request](img/doh-response.png "DoH response with Burp DoH Decoder")
-
-## Documentation
-
-You can find the [Documentation](docs/DOCUMENTATION.md) in the "docs" folder.
