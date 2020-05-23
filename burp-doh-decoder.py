@@ -1,5 +1,6 @@
 import sys
 import dnslib
+import base64
 from burp import IBurpExtender
 from burp import IMessageEditorTab
 from burp import IMessageEditorTabFactory
@@ -86,37 +87,16 @@ class DisplayValues(IMessageEditorTab):
             bool -- The method should return true if the custom tab is able to handle the specified message, and so will be displayed within the editor. Otherwise, the tab will be hidden while this message is displayed.
         """
         requestInfo = self._extender._helpers.analyzeRequest(content)
+
         headers = requestInfo.getHeaders()
+        doh_headers = [
+            'accept: application/dns-message',
+            'content-type: application/dns-message'
+        ]
 
-        if 'Content-Type: application/dns-message' in headers:
-            self._message = ""
-
-            bodyOffset = requestInfo.getBodyOffset()
-            bodyBytes = content[bodyOffset:]
-            message_size = len(bodyBytes)
-
-            try:
-                dns_record = dnslib.DNSRecord()
-                dns_packet = dns_record.parse(bodyBytes)
-            except dnslib.dns.DNSError:
-                return True
-
-            message_lines = str(dns_packet).splitlines()
-            for i in range(len(message_lines)):
-                if message_lines[i].endswith('SECTION:'):
-                    message_lines[i] = '\n' + message_lines[i]
-
-            direction = 'sent' if isRequest else 'rcvd'
-
-            message_lines.append(
-                '\n;; MSG SIZE  ' +
-                direction + ': ' + str(message_size)
-            )
-            self._message = '\n'.join(message_lines)
-
+        if any(elem.lower() in doh_headers for elem in headers):
             return True
 
-        self._message = None
         return False
 
     def setMessage(self, content, isRequest):
@@ -127,9 +107,38 @@ class DisplayValues(IMessageEditorTab):
             isRequest {bool} -- Indicates whether the message is a request or a response.
         """
         self._txtInput.setEditable(False)
-        self._txtInput.setText(self._message)
 
-        return
+        requestInfo = self._extender._helpers.analyzeRequest(content)
+        headers = requestInfo.getHeaders()
+
+        if requestInfo.getMethod() == 'GET' in headers:
+            for param in requestInfo.getParameters():
+                if param.getName().lower() == 'dns':
+                    bodyBytes = base64.b64decode(param.getValue)
+        else:
+            bodyOffset = requestInfo.getBodyOffset()
+            bodyBytes = content[bodyOffset:]
+
+        try:
+            dns_record = dnslib.DNSRecord()
+            dns_packet = dns_record.parse(bodyBytes)
+        except dnslib.dns.DNSError:
+            return
+
+        message_lines = str(dns_packet).splitlines()
+        for i in range(len(message_lines)):
+            if message_lines[i].endswith('SECTION:'):
+                message_lines[i] = '\n' + message_lines[i]
+
+        message_size = len(bodyBytes)
+        direction = 'sent' if isRequest else 'rcvd'
+
+        message_lines.append(
+            '\n;; MSG SIZE  ' +
+            direction + ': ' + str(message_size)
+        )
+        self._message = '\n'.join(message_lines)
+        self._txtInput.setText(self._message)
 
     def getMessage(self):
         """This method returns the currently displayed message.
@@ -137,7 +146,7 @@ class DisplayValues(IMessageEditorTab):
         Returns:
             str -- The currently displayed message.
         """
-        return self._message
+        return self._txtInput.getText()
 
     def isModified(self):
         """This method is used to determine whether the currently displayed message has been modified by the user. The hosting editor will always call getMessage() before calling this method, so any pending edits should be completed within getMessage().
@@ -145,4 +154,4 @@ class DisplayValues(IMessageEditorTab):
         Returns:
             bool -- The method should return true if the user has modified the current message since it was first displayed.
         """
-        return False
+        return not self._txtInput.getText().equals(self._message)
