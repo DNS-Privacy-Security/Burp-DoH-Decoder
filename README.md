@@ -14,7 +14,7 @@ Burp DoH Decoder - Decodes DNS messages from HTTP(S) requests and responses with
 2. If not already installed, download the standalone Jython JAR file from https://www.jython.org/download and define the file location in Burp:\
 Extender ➡ Options ➡ Python Environment ➡ Location of Jython standalone JAR file
 3. Add Burp DoH Decoder to the Burp extensions:\
-Extender ➡ Extensions ➡ Add\
+Extender -> Extensions -> Add\
 Configure the Extension Details and press Next button
     * Extension type: Python
     * Extension file: `<path/of/burp-doh-decoder.py>`
