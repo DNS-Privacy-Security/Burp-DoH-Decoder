@@ -107,16 +107,21 @@ class DisplayValues(IMessageEditorTab):
             isRequest {bool} -- Indicates whether the message is a request or a response.
         """
         self._text_editor.setEditable(False)
-        self._message = ""
         self._text_editor.setText("")
+        self._message = ""
 
         request_info = self._extender._helpers.analyzeRequest(content)
+        body_bytes = None
 
         if request_info.getMethod().lower() == 'get':
             for parameter in request_info.getParameters():
                 if parameter.getName().lower() == 'dns':
-                    body_bytes = base64.b64decode(parameter.getValue())
-        else:
+                    try:
+                        body_bytes = base64.b64decode(parameter.getValue())
+                    except TypeError:
+                        pass
+
+        if body_bytes is None:
             body_offset = request_info.getBodyOffset()
             body_bytes = content[body_offset:]
 
