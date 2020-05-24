@@ -25,7 +25,7 @@ Configure the Extension Details and press Next button
 
 ## Configuration
 
-You can configure Burp DoH Decoder with the `burp-doh-decoder.ini` file.
+You can configure Burp DoH Decoder with the [burp-doh-decoder.ini](burp-doh-decoder.ini) file.
 
 ### UDP DNS Mirror
 
