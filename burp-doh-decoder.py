@@ -56,7 +56,7 @@ class DisplayValues(IMessageEditorTab):
             controller {IMessageEditorController} -- An IMessageEditorController object, which the new tab can query to retrieve details about the currently displayed message
             editable {bool} -- Indicates whether the hosting editor is editable or read-only.
         """
-        self._txtInput = extender._callbacks.createTextEditor()
+        self._text_editor = extender._callbacks.createTextEditor()
         self._extender = extender
         self._message = None
 
@@ -66,7 +66,7 @@ class DisplayValues(IMessageEditorTab):
         Returns:
             java.awt.Component -- Returns the Burp component for the custom tab
         """
-        return self._txtInput.getComponent()
+        return self._text_editor.getComponent()
 
     def getTabCaption(self):
         """This method returns the caption that should appear on the custom tab when it is displayed.
@@ -86,9 +86,9 @@ class DisplayValues(IMessageEditorTab):
         Returns:
             bool -- The method should return true if the custom tab is able to handle the specified message, and so will be displayed within the editor. Otherwise, the tab will be hidden while this message is displayed.
         """
-        requestInfo = self._extender._helpers.analyzeRequest(content)
+        request_info = self._extender._helpers.analyzeRequest(content)
 
-        headers = requestInfo.getHeaders()
+        headers = request_info.getHeaders()
         doh_headers = [
             'accept: application/dns-message',
             'content-type: application/dns-message'
@@ -106,22 +106,23 @@ class DisplayValues(IMessageEditorTab):
             content {str} -- The message that is about to be displayed, or a zero-length array if the existing message is to be cleared.
             isRequest {bool} -- Indicates whether the message is a request or a response.
         """
-        self._txtInput.setEditable(False)
+        self._text_editor.setEditable(False)
+        self._message = ""
+        self._text_editor.setText("")
 
-        requestInfo = self._extender._helpers.analyzeRequest(content)
-        headers = requestInfo.getHeaders()
+        request_info = self._extender._helpers.analyzeRequest(content)
 
-        if requestInfo.getMethod() == 'GET' in headers:
-            for param in requestInfo.getParameters():
-                if param.getName().lower() == 'dns':
-                    bodyBytes = base64.b64decode(param.getValue)
+        if request_info.getMethod().lower() == 'get':
+            for parameter in request_info.getParameters():
+                if parameter.getName().lower() == 'dns':
+                    body_bytes = base64.b64decode(parameter.getValue())
         else:
-            bodyOffset = requestInfo.getBodyOffset()
-            bodyBytes = content[bodyOffset:]
+            body_offset = request_info.getBodyOffset()
+            body_bytes = content[body_offset:]
 
         try:
             dns_record = dnslib.DNSRecord()
-            dns_packet = dns_record.parse(bodyBytes)
+            dns_packet = dns_record.parse(body_bytes)
         except dnslib.dns.DNSError:
             return
 
@@ -130,7 +131,7 @@ class DisplayValues(IMessageEditorTab):
             if message_lines[i].endswith('SECTION:'):
                 message_lines[i] = '\n' + message_lines[i]
 
-        message_size = len(bodyBytes)
+        message_size = len(body_bytes)
         direction = 'sent' if isRequest else 'rcvd'
 
         message_lines.append(
@@ -138,7 +139,7 @@ class DisplayValues(IMessageEditorTab):
             direction + ': ' + str(message_size)
         )
         self._message = '\n'.join(message_lines)
-        self._txtInput.setText(self._message)
+        self._text_editor.setText(self._message)
 
     def getMessage(self):
         """This method returns the currently displayed message.
@@ -146,7 +147,7 @@ class DisplayValues(IMessageEditorTab):
         Returns:
             str -- The currently displayed message.
         """
-        return self._txtInput.getText()
+        return self._text_editor.getText()
 
     def isModified(self):
         """This method is used to determine whether the currently displayed message has been modified by the user. The hosting editor will always call getMessage() before calling this method, so any pending edits should be completed within getMessage().
@@ -154,4 +155,4 @@ class DisplayValues(IMessageEditorTab):
         Returns:
             bool -- The method should return true if the user has modified the current message since it was first displayed.
         """
-        return not self._txtInput.getText().equals(self._message)
+        return not self._text_editor.getText().equals(self._message)
