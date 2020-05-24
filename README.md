@@ -1,6 +1,6 @@
 # Burp DoH Decoder
 
-Decodes DNS messages from HTTP(S) requests and responses with the MIME type `application/dns-message`
+Decodes DNS messages from DoH based HTTP(S) requests and responses with the MIME type `application/dns-message`. This extension supports the HTTP GET and the POST method according to [RFC 8484 (Section 4.1)](https://tools.ietf.org/html/rfc8484#section-4.1).
 
 ## Getting Started
 
