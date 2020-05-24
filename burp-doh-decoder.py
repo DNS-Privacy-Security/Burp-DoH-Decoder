@@ -133,29 +133,31 @@ class DisplayValues(IMessageEditorTab):
         self._message = ""
 
         request_info = self._extender._helpers.analyzeRequest(content)
-        body_bytes = None
+        dns_messagge_bytes = None
 
         if request_info.getMethod().lower() == 'get':
             for parameter in request_info.getParameters():
                 if parameter.getName().lower() == 'dns':
                     try:
-                        body_bytes = base64.b64decode(parameter.getValue())
+                        dns_messagge_bytes = base64.b64decode(
+                            parameter.getValue()
+                        )
                     except TypeError:
                         pass
 
-        if body_bytes is None:
+        if dns_messagge_bytes is None:
             body_offset = request_info.getBodyOffset()
-            body_bytes = content[body_offset:]
+            dns_messagge_bytes = content[body_offset:]
 
         try:
             dns_record = dnslib.DNSRecord()
-            dns_packet = dns_record.parse(body_bytes)
+            dns_packet = dns_record.parse(dns_messagge_bytes)
         except dnslib.dns.DNSError:
             return
 
         if self._extender._udp_mirror_sock is not None:
             self._extender._udp_mirror_sock.sendto(
-                body_bytes, (
+                dns_messagge_bytes, (
                     self._extender._udp_mirror_ip,
                     self._extender._udp_mirror_port
                 )
@@ -166,7 +168,7 @@ class DisplayValues(IMessageEditorTab):
             if message_lines[i].endswith('SECTION:'):
                 message_lines[i] = '\n' + message_lines[i]
 
-        message_size = len(body_bytes)
+        message_size = len(dns_messagge_bytes)
         direction = 'sent' if isRequest else 'rcvd'
 
         message_lines.append(
