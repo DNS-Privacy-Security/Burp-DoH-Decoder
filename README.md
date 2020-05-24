@@ -9,12 +9,12 @@ Decodes DNS messages from HTTP(S) requests and responses with the MIME type `app
 1. Go to your desired extension installation directory and run the following commands. 
     ```sh
     git clone https://github.com/DNS-Privacy-Security/burp-doh-decoder.git
-    pip install -r burp-doh-decoder/requirements.txt --target=Lib
+    pip install -r burp-doh-decoder/requirements.txt --target=burp-doh-decoder/packages
     ```
 
-2. If not already installed, download the standalone Jython JAR file from https://www.jython.org/download into the same directory and define the file location in Burp:\
-Extender ➡ Options ➡ Python Environment ➡ Location of Jython standalone JAR file.\
-If you installed Jython in a different directory, you must also configure the module loading folder by selecting the `Lib` folder.
+2. If not already installed, download the standalone Jython JAR file from https://www.jython.org/download and define the file location in Burp:\
+Extender ➡ Options ➡ Python Environment ➡ Location of Jython standalone JAR file.
+
 3. Add Burp DoH Decoder to the Burp extensions:\
 Extender ➡ Extensions ➡ Add\
 Configure the Extension Details and press Next button

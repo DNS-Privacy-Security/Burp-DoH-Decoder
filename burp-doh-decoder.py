@@ -1,11 +1,11 @@
-import sys
-import dnslib
-import base64
-import socket
-from ConfigParser import ConfigParser
-from burp import IBurpExtender
-from burp import IMessageEditorTab
+import sys; sys.path.append('packages')
 from burp import IMessageEditorTabFactory
+from burp import IMessageEditorTab
+from burp import IBurpExtender
+from ConfigParser import ConfigParser
+import socket
+import base64
+import dnslib
 
 
 class BurpExtender(IBurpExtender, IMessageEditorTabFactory):
