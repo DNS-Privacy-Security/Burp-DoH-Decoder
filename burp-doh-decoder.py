@@ -1,6 +1,8 @@
 import sys
 import dnslib
 import base64
+import socket
+from ConfigParser import ConfigParser
 from burp import IBurpExtender
 from burp import IMessageEditorTab
 from burp import IMessageEditorTabFactory
@@ -20,11 +22,31 @@ class BurpExtender(IBurpExtender, IMessageEditorTabFactory):
         Arguments:
             callbacks {IBurpExtenderCallbacks} -- Instance of the IBurpExtenderCallbacks interface
         """
-        callbacks.setExtensionName("DoH DNS-Message Decoder")
-        callbacks.registerMessageEditorTabFactory(self)
+        name = "DoH DNS-Message Decoder"
+        print("Loading '{name}'".format(name=name))
 
+        callbacks.setExtensionName(name)
+        callbacks.registerMessageEditorTabFactory(self)
         self._callbacks = callbacks
         self._helpers = callbacks.getHelpers()
+
+        config_object = ConfigParser()
+        config_object.read('burp-doh-decoder.ini')
+
+        self._udp_mirror_ip = config_object.get('UDPMIRROR', 'ip')
+        self._udp_mirror_port = config_object.getint('UDPMIRROR', 'port')
+
+        if config_object.getboolean('UDPMIRROR', 'enabled'):
+            print(
+                "UDP mirror enabled. Sending DNS messages to {ip}:{port}".format(
+                    ip=self._udp_mirror_ip, port=self._udp_mirror_port
+                )
+            )
+            self._udp_mirror_sock = socket.socket(
+                socket.AF_INET, socket.SOCK_DGRAM
+            )
+        else:
+            self._udp_mirror_sock = None
 
         return
 
@@ -131,6 +153,14 @@ class DisplayValues(IMessageEditorTab):
         except dnslib.dns.DNSError:
             return
 
+        if self._extender._udp_mirror_sock is not None:
+            self._extender._udp_mirror_sock.sendto(
+                body_bytes, (
+                    self._extender._udp_mirror_ip,
+                    self._extender._udp_mirror_port
+                )
+            )
+
         message_lines = str(dns_packet).splitlines()
         for i in range(len(message_lines)):
             if message_lines[i].endswith('SECTION:'):
@@ -140,8 +170,9 @@ class DisplayValues(IMessageEditorTab):
         direction = 'sent' if isRequest else 'rcvd'
 
         message_lines.append(
-            '\n;; MSG SIZE  ' +
-            direction + ': ' + str(message_size)
+            '\n;; MSG SIZE  {direction}: {size}'.format(
+                direction=direction, size=message_size
+            )
         )
         self._message = '\n'.join(message_lines)
         self._text_editor.setText(self._message)
