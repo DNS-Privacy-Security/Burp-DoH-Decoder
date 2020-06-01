@@ -19,13 +19,13 @@ Extender ➡ Options ➡ Python Environment ➡ Location of Jython standalone JA
 Extender ➡ Extensions ➡ Add\
 Configure the Extension Details and press Next button
     * Extension type: Python
-    * Extension file: `<path/of/burp-doh-decoder.py>`
+    * Extension file: `<path/of/burp_doh_decoder.py>`
 
 4. The Burp DoH Decoder is now installed and no errors should be visible on the Errors tab
 
 ## Configuration
 
-You can configure Burp DoH Decoder with the [burp-doh-decoder.ini](burp-doh-decoder.ini) file.
+You can configure Burp DoH Decoder with the [burp_doh_decoder.ini](burp_doh_decoder.ini) file.
 
 ### UDP DNS Mirror
 

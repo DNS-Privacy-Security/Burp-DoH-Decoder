@@ -1,11 +1,12 @@
-import sys; sys.path.append('packages')
+from sys import path
+path.append('packages')
+import socket
+import base64
+import dnslib
 from burp import IMessageEditorTabFactory
 from burp import IMessageEditorTab
 from burp import IBurpExtender
 from ConfigParser import ConfigParser
-import socket
-import base64
-import dnslib
 
 
 class BurpExtender(IBurpExtender, IMessageEditorTabFactory):
@@ -16,39 +17,41 @@ class BurpExtender(IBurpExtender, IMessageEditorTabFactory):
         IMessageEditorTabFactory -- Extensions can implement this interface and then call IBurpExtenderCallbacks.registerMessageEditorTabFactory() to register a factory for custom message editor tabs. This allows extensions to provide custom rendering or editing of HTTP messages, within Burp's own HTTP editor.
     """
 
+    def __init__(self):
+        self.extension_name = "DoH DNS-Message Decoder"
+        self.callbacks = None
+        self.helpers = None
+
+        print("Loading '{name}'".format(name=self.extension_name))
+
+        config_object = ConfigParser()
+        config_object.read('burp_doh_decoder.ini')
+
+        self.udp_mirror_ip = config_object.get('UDPMIRROR', 'ip')
+        self.udp_mirror_port = config_object.getint('UDPMIRROR', 'port')
+
+        if config_object.getboolean('UDPMIRROR', 'enabled'):
+            print(
+                "UDP mirror enabled. Sending DNS messages to {ip}:{port}".format(
+                    ip=self.udp_mirror_ip, port=self.udp_mirror_port
+                )
+            )
+            self.udp_mirror_sock = socket.socket(
+                socket.AF_INET, socket.SOCK_DGRAM
+            )
+        else:
+            self.udp_mirror_sock = None
+
     def registerExtenderCallbacks(self, callbacks):
         """This method is invoked when the extension is loaded. It registers an instance of the IBurpExtenderCallbacks interface, providing methods that may be invoked by the extension to perform various actions.
 
         Arguments:
             callbacks {IBurpExtenderCallbacks} -- Instance of the IBurpExtenderCallbacks interface
         """
-        name = "DoH DNS-Message Decoder"
-        print("Loading '{name}'".format(name=name))
-
-        callbacks.setExtensionName(name)
+        callbacks.setExtensionName(self.extension_name)
         callbacks.registerMessageEditorTabFactory(self)
-        self._callbacks = callbacks
-        self._helpers = callbacks.getHelpers()
-
-        config_object = ConfigParser()
-        config_object.read('burp-doh-decoder.ini')
-
-        self._udp_mirror_ip = config_object.get('UDPMIRROR', 'ip')
-        self._udp_mirror_port = config_object.getint('UDPMIRROR', 'port')
-
-        if config_object.getboolean('UDPMIRROR', 'enabled'):
-            print(
-                "UDP mirror enabled. Sending DNS messages to {ip}:{port}".format(
-                    ip=self._udp_mirror_ip, port=self._udp_mirror_port
-                )
-            )
-            self._udp_mirror_sock = socket.socket(
-                socket.AF_INET, socket.SOCK_DGRAM
-            )
-        else:
-            self._udp_mirror_sock = None
-
-        return
+        self.callbacks = callbacks
+        self.helpers = callbacks.getHelpers()
 
     def createNewInstance(self, controller, editable):
         """Burp will call this method once for each HTTP message editor, and the factory should provide a new instance of an IMessageEditorTab object.
@@ -78,7 +81,7 @@ class DisplayValues(IMessageEditorTab):
             controller {IMessageEditorController} -- An IMessageEditorController object, which the new tab can query to retrieve details about the currently displayed message
             editable {bool} -- Indicates whether the hosting editor is editable or read-only.
         """
-        self._text_editor = extender._callbacks.createTextEditor()
+        self._text_editor = extender.callbacks.createTextEditor()
         self._extender = extender
         self._message = None
 
@@ -108,7 +111,7 @@ class DisplayValues(IMessageEditorTab):
         Returns:
             bool -- The method should return true if the custom tab is able to handle the specified message, and so will be displayed within the editor. Otherwise, the tab will be hidden while this message is displayed.
         """
-        request_info = self._extender._helpers.analyzeRequest(content)
+        request_info = self._extender.helpers.analyzeRequest(content)
 
         headers = request_info.getHeaders()
         doh_headers = [
@@ -132,34 +135,38 @@ class DisplayValues(IMessageEditorTab):
         self._text_editor.setText("")
         self._message = ""
 
-        request_info = self._extender._helpers.analyzeRequest(content)
-        dns_messagge_bytes = None
+        request_info = self._extender.helpers.analyzeRequest(content)
+        dns_message_bytes = None
 
         if request_info.getMethod().lower() == 'get':
             for parameter in request_info.getParameters():
                 if parameter.getName().lower() == 'dns':
+                    dns_mesage_base64 = str(parameter.getValue())
+                    dns_mesage_base64 += '=' * ((4 - len(dns_mesage_base64) % 4) % 4)
                     try:
-                        dns_messagge_bytes = base64.b64decode(
-                            parameter.getValue()
+                        dns_message_bytes = base64.urlsafe_b64decode(
+                            dns_mesage_base64
                         )
                     except TypeError:
+                        print("Not a valid base64 string")
                         pass
 
-        if dns_messagge_bytes is None:
+        if dns_message_bytes is None:
             body_offset = request_info.getBodyOffset()
-            dns_messagge_bytes = content[body_offset:]
+            dns_message_bytes = content[body_offset:]
 
         try:
             dns_record = dnslib.DNSRecord()
-            dns_packet = dns_record.parse(dns_messagge_bytes)
+            dns_packet = dns_record.parse(dns_message_bytes)
         except dnslib.dns.DNSError:
+            print("Could not decode DNS message")
             return
 
-        if self._extender._udp_mirror_sock is not None:
-            self._extender._udp_mirror_sock.sendto(
-                dns_messagge_bytes, (
-                    self._extender._udp_mirror_ip,
-                    self._extender._udp_mirror_port
+        if self._extender.udp_mirror_sock is not None:
+            self._extender.udp_mirror_sock.sendto(
+                dns_message_bytes, (
+                    self._extender.udp_mirror_ip,
+                    self._extender.udp_mirror_port
                 )
             )
 
@@ -168,7 +175,7 @@ class DisplayValues(IMessageEditorTab):
             if message_lines[i].endswith('SECTION:'):
                 message_lines[i] = '\n' + message_lines[i]
 
-        message_size = len(dns_messagge_bytes)
+        message_size = len(dns_message_bytes)
         direction = 'sent' if isRequest else 'rcvd'
 
         message_lines.append(
